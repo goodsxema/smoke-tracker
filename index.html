@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Не курю</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: #17212b;
+    --card: #1e2a37;
+    --text: #ffffff;
+    --hint: #8395a7;
+    --accent: #4fae4e;
+    --danger: #e05252;
+    --border: #2b3947;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    padding-bottom: 32px;
+  }
+  h1 {
+    font-size: 20px;
+    margin: 4px 0 20px 0;
+    text-align: center;
+    font-weight: 600;
+  }
+  .timer-card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 24px 16px;
+    text-align: center;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+  }
+  .timer-label {
+    color: var(--hint);
+    font-size: 13px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .timer-value {
+    font-size: 40px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
+  }
+  .timer-sub {
+    color: var(--hint);
+    font-size: 13px;
+    margin-top: 6px;
+  }
+  .add-btn {
+    width: 100%;
+    padding: 18px;
+    font-size: 18px;
+    font-weight: 600;
+    border: none;
+    border-radius: 14px;
+    background: var(--accent);
+    color: white;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .add-btn:active { transform: scale(0.97); }
+  .undo-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--hint);
+    margin-bottom: 20px;
+    cursor: pointer;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+  }
+  .stat-value {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .stat-label {
+    color: var(--hint);
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .history-title {
+    font-size: 14px;
+    color: var(--hint);
+    margin: 0 0 10px 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .history-list {
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-time { color: var(--text); }
+  .history-gap { color: var(--hint); font-size: 13px; }
+  .empty {
+    text-align: center;
+    color: var(--hint);
+    padding: 20px;
+    font-size: 14px;
+  }
+  .save-indicator {
+    text-align: center;
+    font-size: 12px;
+    color: var(--hint);
+    margin-top: 6px;
+    min-height: 16px;
+  }
+</style>
+</head>
+<body>
+
+<h1>🚭 Без сигарет</h1>
+
+<div class="timer-card">
+  <div class="timer-label">Времени без сигареты</div>
+  <div class="timer-value" id="timer">--:--:--</div>
+  <div class="timer-sub" id="lastTime">Пока нет записей</div>
+</div>
+
+<button class="add-btn" id="addBtn">Закурил 🚬</button>
+<button class="undo-btn" id="undoBtn" style="display:none;">Отменить последнюю запись</button>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-value" id="todayCount">0</div>
+    <div class="stat-label">Сегодня</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="avgGap">—</div>
+    <div class="stat-label">Средний интервал сегодня</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="bestGap">—</div>
+    <div class="stat-label">Лучший интервал (всё время)</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="totalCount">0</div>
+    <div class="stat-label">Всего записей</div>
+  </div>
+</div>
+
+<div class="history-title">Последние записи</div>
+<div class="history-list" id="historyList">
+  <div class="empty">Записей пока нет</div>
+</div>
+
+<div class="save-indicator" id="saveIndicator"></div>
+
+<script>
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+if (tg) {
+  tg.ready();
+  tg.expand();
+}
+
+const STORAGE_KEY = 'cig_events_v1';
+const MAX_EVENTS_STORED = 500; // ограничение чтобы не упереться в лимит CloudStorage (4096 символов на значение)
+
+let events = []; // массив timestamp (ms), от старых к новым
+
+// --- Слой хранения: CloudStorage (Telegram) с фолбэком на localStorage (для теста в обычном браузере) ---
+function storageGet(key) {
+  return new Promise((resolve) => {
+    if (tg && tg.CloudStorage) {
+      tg.CloudStorage.getItem(key, (err, value) => {
+        if (err) { resolve(null); } else { resolve(value || null); }
+      });
+    } else {
+      try { resolve(localStorage.getItem(key)); } catch (e) { resolve(null); }
+    }
+  });
+}
+
+function storageSet(key, value) {
+  return new Promise((resolve) => {
+    if (tg && tg.CloudStorage) {
+      tg.CloudStorage.setItem(key, value, (err) => resolve(!err));
+    } else {
+      try { localStorage.setItem(key, value); resolve(true); } catch (e) { resolve(false); }
+    }
+  });
+}
+
+async function loadEvents() {
+  const raw = await storageGet(STORAGE_KEY);
+  if (raw) {
+    try {
+      events = JSON.parse(raw);
+      if (!Array.isArray(events)) events = [];
+    } catch (e) {
+      events = [];
+    }
+  }
+  render();
+}
+
+async function saveEvents() {
+  if (events.length > MAX_EVENTS_STORED) {
+    events = events.slice(events.length - MAX_EVENTS_STORED);
+  }
+  const ok = await storageSet(STORAGE_KEY, JSON.stringify(events));
+  const indicator = document.getElementById('saveIndicator');
+  indicator.textContent = ok ? '' : 'Не удалось сохранить, проверь соединение';
+}
+
+// --- Форматирование ---
+function formatDuration(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+function formatDurationShort(ms) {
+  const totalMin = Math.round(ms / 60000);
+  if (totalMin < 60) return totalMin + ' мин';
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return h + 'ч ' + m + 'м';
+}
+
+function formatClock(ts) {
+  const d = new Date(ts);
+  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
+
+function isToday(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() &&
+         d.getMonth() === now.getMonth() &&
+         d.getDate() === now.getDate();
+}
+
+// --- Рендер ---
+function render() {
+  renderStats();
+  renderHistory();
+  renderTimer();
+}
+
+function renderStats() {
+  const todayEvents = events.filter(ts => isToday(ts));
+  document.getElementById('todayCount').textContent = todayEvents.length;
+  document.getElementById('totalCount').textContent = events.length;
+
+  // Средний интервал сегодня (между записями сегодняшнего дня)
+  if (todayEvents.length >= 2) {
+    let sum = 0;
+    for (let i = 1; i < todayEvents.length; i++) {
+      sum += todayEvents[i] - todayEvents[i-1];
+    }
+    const avg = sum / (todayEvents.length - 1);
+    document.getElementById('avgGap').textContent = formatDurationShort(avg);
+  } else {
+    document.getElementById('avgGap').textContent = '—';
+  }
+
+  // Лучший (самый долгий) интервал за всё время
+  if (events.length >= 2) {
+    let best = 0;
+    for (let i = 1; i < events.length; i++) {
+      const gap = events[i] - events[i-1];
+      if (gap > best) best = gap;
+    }
+    document.getElementById('bestGap').textContent = formatDurationShort(best);
+  } else {
+    document.getElementById('bestGap').textContent = '—';
+  }
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if (events.length === 0) {
+    list.innerHTML = '<div class="empty">Записей пока нет</div>';
+    return;
+  }
+  const last = events.slice(-10).reverse();
+  list.innerHTML = last.map((ts, idx) => {
+    const realIdx = events.length - 1 - idx;
+    let gapText = '';
+    if (realIdx > 0) {
+      const gap = events[realIdx] - events[realIdx - 1];
+      gapText = 'через ' + formatDurationShort(gap) + ' от предыдущей';
+    } else {
+      gapText = 'первая запись';
+    }
+    return `<div class="history-item">
+      <span class="history-time">${formatClock(ts)}</span>
+      <span class="history-gap">${gapText}</span>
+    </div>`;
+  }).join('');
+}
+
+let timerInterval = null;
+function renderTimer() {
+  const lastTimeEl = document.getElementById('lastTime');
+  const timerEl = document.getElementById('timer');
+
+  if (events.length === 0) {
+    timerEl.textContent = '--:--:--';
+    lastTimeEl.textContent = 'Пока нет записей';
+    document.getElementById('undoBtn').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('undoBtn').style.display = 'block';
+  const lastTs = events[events.length - 1];
+  lastTimeEl.textContent = 'Последняя: ' + formatClock(lastTs);
+
+  if (timerInterval) clearInterval(timerInterval);
+  const tick = () => {
+    timerEl.textContent = formatDuration(Date.now() - lastTs);
+  };
+  tick();
+  timerInterval = setInterval(tick, 1000);
+}
+
+// --- Действия ---
+document.getElementById('addBtn').addEventListener('click', async () => {
+  events.push(Date.now());
+  render();
+  await saveEvents();
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+});
+
+document.getElementById('undoBtn').addEventListener('click', async () => {
+  if (events.length === 0) return;
+  events.pop();
+  render();
+  await saveEvents();
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+});
+
+loadEvents();
+</script>
+</body>
+</html>
