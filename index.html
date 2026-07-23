@@ -143,7 +143,7 @@
 </head>
 <body>
 
-<h1>🚭 Без сигарет</h1>
+<h1>🚭 Say no to cigarettes</h1>
 
 <div class="timer-card">
   <div class="timer-label">Time without sigarettes</div>
@@ -256,7 +256,7 @@ function formatDurationShort(ms) {
 
 function formatClock(ts) {
   const d = new Date(ts);
-  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString('us-EN', { hour: '2-digit', minute: '2-digit' });
 }
 
 function isToday(ts) {
@@ -307,7 +307,7 @@ function renderStats() {
 function renderHistory() {
   const list = document.getElementById('historyList');
   if (events.length === 0) {
-    list.innerHTML = '<div class="empty">Записей пока нет</div>';
+    list.innerHTML = '<div class="empty">No logs yet</div>';
     return;
   }
   const last = events.slice(-10).reverse();
@@ -316,9 +316,9 @@ function renderHistory() {
     let gapText = '';
     if (realIdx > 0) {
       const gap = events[realIdx] - events[realIdx - 1];
-      gapText = 'через ' + formatDurationShort(gap) + ' от предыдущей';
+      gapText = 'через ' + formatDurationShort(gap) + ' from last';
     } else {
-      gapText = 'первая запись';
+      gapText = 'first log';
     }
     return `<div class="history-item">
       <span class="history-time">${formatClock(ts)}</span>
@@ -334,14 +334,14 @@ function renderTimer() {
 
   if (events.length === 0) {
     timerEl.textContent = '--:--:--';
-    lastTimeEl.textContent = 'Пока нет записей';
+    lastTimeEl.textContent = 'No logs yet';
     document.getElementById('undoBtn').style.display = 'none';
     return;
   }
 
   document.getElementById('undoBtn').style.display = 'block';
   const lastTs = events[events.length - 1];
-  lastTimeEl.textContent = 'Последняя: ' + formatClock(lastTs);
+  lastTimeEl.textContent = 'Last: ' + formatClock(lastTs);
 
   if (timerInterval) clearInterval(timerInterval);
   const tick = () => {
