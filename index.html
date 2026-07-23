@@ -188,11 +188,11 @@ if (tg) {
 }
 
 const STORAGE_KEY = 'cig_events_v1';
-const MAX_EVENTS_STORED = 500; // ограничение чтобы не упереться в лимит CloudStorage (4096 символов на значение)
+const MAX_EVENTS_STORED = 500; 
 
-let events = []; // массив timestamp (ms), от старых к новым
+let events = []; 
 
-// --- Слой хранения: CloudStorage (Telegram) с фолбэком на localStorage (для теста в обычном браузере) ---
+
 function storageGet(key) {
   return new Promise((resolve) => {
     if (tg && tg.CloudStorage) {
@@ -237,7 +237,7 @@ async function saveEvents() {
   indicator.textContent = ok ? '' : 'Не удалось сохранить, проверь соединение';
 }
 
-// --- Форматирование ---
+
 function formatDuration(ms) {
   const totalSec = Math.floor(ms / 1000);
   const h = Math.floor(totalSec / 3600);
@@ -267,7 +267,7 @@ function isToday(ts) {
          d.getDate() === now.getDate();
 }
 
-// --- Рендер ---
+
 function render() {
   renderStats();
   renderHistory();
@@ -279,7 +279,7 @@ function renderStats() {
   document.getElementById('todayCount').textContent = todayEvents.length;
   document.getElementById('totalCount').textContent = events.length;
 
-  // Средний интервал сегодня (между записями сегодняшнего дня)
+  
   if (todayEvents.length >= 2) {
     let sum = 0;
     for (let i = 1; i < todayEvents.length; i++) {
@@ -291,7 +291,7 @@ function renderStats() {
     document.getElementById('avgGap').textContent = '—';
   }
 
-  // Лучший (самый долгий) интервал за всё время
+
   if (events.length >= 2) {
     let best = 0;
     for (let i = 1; i < events.length; i++) {
@@ -351,7 +351,7 @@ function renderTimer() {
   timerInterval = setInterval(tick, 1000);
 }
 
-// --- Действия ---
+
 document.getElementById('addBtn').addEventListener('click', async () => {
   events.push(Date.now());
   render();
