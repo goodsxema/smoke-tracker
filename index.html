@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Не курю</title>
+<title>Smoke Free</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root {
@@ -143,16 +143,16 @@
 </head>
 <body>
 
-<h1>🚭 Say no to cigarettes</h1>
+<h1>🚭 Smoke Free</h1>
 
 <div class="timer-card">
-  <div class="timer-label">Time without sigarettes</div>
+  <div class="timer-label">Time since last cigarette</div>
   <div class="timer-value" id="timer">--:--:--</div>
-  <div class="timer-sub" id="lastTime">No logs yet</div>
+  <div class="timer-sub" id="lastTime">No entries yet</div>
 </div>
 
 <button class="add-btn" id="addBtn">Smoked 🚬</button>
-<button class="undo-btn" id="undoBtn" style="display:none;">Cancel last log</button>
+<button class="undo-btn" id="undoBtn" style="display:none;">Undo last entry</button>
 
 <div class="stats-grid">
   <div class="stat-card">
@@ -161,7 +161,7 @@
   </div>
   <div class="stat-card">
     <div class="stat-value" id="avgGap">—</div>
-    <div class="stat-label">Avg time today</div>
+    <div class="stat-label">Avg interval today</div>
   </div>
   <div class="stat-card">
     <div class="stat-value" id="bestGap">—</div>
@@ -169,13 +169,13 @@
   </div>
   <div class="stat-card">
     <div class="stat-value" id="totalCount">0</div>
-    <div class="stat-label">All logs</div>
+    <div class="stat-label">Total entries</div>
   </div>
 </div>
 
-<div class="history-title">Last log</div>
+<div class="history-title">Recent entries</div>
 <div class="history-list" id="historyList">
-  <div class="empty">No logs yet</div>
+  <div class="empty">No entries yet</div>
 </div>
 
 <div class="save-indicator" id="saveIndicator"></div>
@@ -188,11 +188,11 @@ if (tg) {
 }
 
 const STORAGE_KEY = 'cig_events_v1';
-const MAX_EVENTS_STORED = 500; 
+const MAX_EVENTS_STORED = 500; // ограничение чтобы не упереться в лимит CloudStorage (4096 символов на значение)
 
-let events = []; 
+let events = []; // массив timestamp (ms), от старых к новым
 
-
+// --- Слой хранения: CloudStorage (Telegram) с фолбэком на localStorage (для теста в обычном браузере) ---
 function storageGet(key) {
   return new Promise((resolve) => {
     if (tg && tg.CloudStorage) {
@@ -234,10 +234,10 @@ async function saveEvents() {
   }
   const ok = await storageSet(STORAGE_KEY, JSON.stringify(events));
   const indicator = document.getElementById('saveIndicator');
-  indicator.textContent = ok ? '' : 'Не удалось сохранить, проверь соединение';
+  indicator.textContent = ok ? '' : 'Could not save, check your connection';
 }
 
-
+// --- Форматирование ---
 function formatDuration(ms) {
   const totalSec = Math.floor(ms / 1000);
   const h = Math.floor(totalSec / 3600);
@@ -248,15 +248,15 @@ function formatDuration(ms) {
 
 function formatDurationShort(ms) {
   const totalMin = Math.round(ms / 60000);
-  if (totalMin < 60) return totalMin + ' мин';
+  if (totalMin < 60) return totalMin + ' min';
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
-  return h + 'ч ' + m + 'м';
+  return h + 'h ' + m + 'm';
 }
 
 function formatClock(ts) {
   const d = new Date(ts);
-  return d.toLocaleTimeString('us-EN', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
 function isToday(ts) {
@@ -267,7 +267,7 @@ function isToday(ts) {
          d.getDate() === now.getDate();
 }
 
-
+// --- Рендер ---
 function render() {
   renderStats();
   renderHistory();
@@ -279,7 +279,7 @@ function renderStats() {
   document.getElementById('todayCount').textContent = todayEvents.length;
   document.getElementById('totalCount').textContent = events.length;
 
-  
+  // Средний интервал сегодня (между записями сегодняшнего дня)
   if (todayEvents.length >= 2) {
     let sum = 0;
     for (let i = 1; i < todayEvents.length; i++) {
@@ -291,7 +291,7 @@ function renderStats() {
     document.getElementById('avgGap').textContent = '—';
   }
 
-
+  // Лучший (самый долгий) интервал за всё время
   if (events.length >= 2) {
     let best = 0;
     for (let i = 1; i < events.length; i++) {
@@ -307,7 +307,7 @@ function renderStats() {
 function renderHistory() {
   const list = document.getElementById('historyList');
   if (events.length === 0) {
-    list.innerHTML = '<div class="empty">No logs yet</div>';
+    list.innerHTML = '<div class="empty">No entries yet</div>';
     return;
   }
   const last = events.slice(-10).reverse();
@@ -316,9 +316,9 @@ function renderHistory() {
     let gapText = '';
     if (realIdx > 0) {
       const gap = events[realIdx] - events[realIdx - 1];
-      gapText = 'через ' + formatDurationShort(gap) + ' from last';
+      gapText = formatDurationShort(gap) + ' after previous';
     } else {
-      gapText = 'first log';
+      gapText = 'first entry';
     }
     return `<div class="history-item">
       <span class="history-time">${formatClock(ts)}</span>
@@ -334,7 +334,7 @@ function renderTimer() {
 
   if (events.length === 0) {
     timerEl.textContent = '--:--:--';
-    lastTimeEl.textContent = 'No logs yet';
+    lastTimeEl.textContent = 'No entries yet';
     document.getElementById('undoBtn').style.display = 'none';
     return;
   }
@@ -351,7 +351,7 @@ function renderTimer() {
   timerInterval = setInterval(tick, 1000);
 }
 
-
+// --- Действия ---
 document.getElementById('addBtn').addEventListener('click', async () => {
   events.push(Date.now());
   render();
